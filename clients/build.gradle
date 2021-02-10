@@ -26,7 +26,7 @@ dependencies {
 
 
 springBoot {
-    mainClassName = "net.corda.samples.example.webserver.ServerKt"
+    mainClassName = "com.isbank.agreement.webserver.ServerKt"
 }
 
 /* The Client is the communication channel between the external and the node. This task will help you immediately
@@ -35,7 +35,7 @@ springBoot {
  */
 task runTestClient(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'net.corda.samples.example.ClientKt'
+    main = 'com.isbank.agreement.ClientKt'
     args 'localhost:10006', 'user1', 'test'
 }
 
@@ -44,6 +44,6 @@ task runTestClient(type: JavaExec, dependsOn: assemble) {
  */
 task runPartyAServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'net.corda.samples.example.webserver.ServerKt'
+    main = 'com.isbank.agreement.webserver.ServerKt'
     args '--server.port=10050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
