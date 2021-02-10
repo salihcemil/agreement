@@ -13,36 +13,27 @@ import org.hibernate.annotations.Type
 /**
  * The family of schemas for IOUState.
  */
-object IOUSchema
+object AgreementSchema
 
 /**
  * An IOUState schema.
  */
-object IOUSchemaV1 : MappedSchema(
-        schemaFamily = IOUSchema.javaClass,
+object AgreementSchemaV1 : MappedSchema(
+        schemaFamily = AgreementSchema.javaClass,
         version = 1,
-        mappedTypes = listOf(PersistentIOU::class.java)) {
+        mappedTypes = listOf(PersistentAgreement::class.java)) {
 
     override val migrationResource: String?
-        get() = "iou.changelog-master";
+        get() = "agreement.changelog-master";
 
     @Entity
-    @Table(name = "iou_states")
-    class PersistentIOU(
-            @Column(name = "issuer")
-            var issuerName: String,
-
-            @Column(name = "acquirer")
-            var acquirerName: String,
-
-            @Column(name = "value")
-            var value: Int,
-
+    @Table(name = "agreement_states")
+    class PersistentAgreement(
             @Column(name = "linear_id")
             @Type(type = "uuid-char")
             var linearId: UUID
     ) : PersistentState() {
         // Default constructor required by hibernate.
-        constructor(): this("", "", 0, UUID.randomUUID())
+        constructor(): this(UUID.randomUUID())
     }
 }

@@ -1,7 +1,7 @@
 package com.isbank.agreement.states
 
-import com.isbank.agreement.contracts.IOUContract
-import com.isbank.agreement.schema.IOUSchemaV1
+import com.isbank.agreement.contracts.AgreementContract
+import com.isbank.agreement.schema.AgreementSchemaV1
 import net.corda.core.contracts.*
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
@@ -19,12 +19,12 @@ import java.util.*
  * @param issuer the party issuing the IOU.
  * @param acquirer the party receiving and approving the IOU.
  */
-@BelongsToContract(IOUContract::class)
+@BelongsToContract(AgreementContract::class)
 data class AgreementState(val value: Int,
                           val issuer: Party,
                           val acquirer: Party,
                           val pan : String,
-                          //val merchant: Account?,
+        //val merchant: Account?,
                           val timeAndDate: Date,
                           val validUntil : Date,
                           val agreementStateID: UUID,
@@ -36,15 +36,12 @@ data class AgreementState(val value: Int,
 
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
-            is IOUSchemaV1 -> IOUSchemaV1.PersistentIOU(
-                    this.issuer.name.toString(),
-                    this.acquirer.name.toString(),
-                    this.value,
+            is AgreementSchemaV1 -> AgreementSchemaV1.PersistentAgreement(
                     this.linearId.id
             )
             else -> throw IllegalArgumentException("Unrecognised schema $schema")
         }
     }
 
-    override fun supportedSchemas(): Iterable<MappedSchema> = listOf(IOUSchemaV1)
+    override fun supportedSchemas(): Iterable<MappedSchema> = listOf(AgreementSchemaV1)
 }

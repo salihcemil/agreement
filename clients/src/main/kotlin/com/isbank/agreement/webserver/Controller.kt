@@ -84,7 +84,6 @@ class Controller(rpc: NodeRPCConnection) {
      *
      * The flow is invoked asynchronously. It returns a future when the flow's call() method returns.
      */
-
     @PostMapping(value = ["create-iou"], produces = [MediaType.TEXT_PLAIN_VALUE], headers = ["Content-Type=application/x-www-form-urlencoded"])
     fun createIOU(request: HttpServletRequest): ResponseEntity<String> {
         val iouValue = request.getParameter("iouValue").toInt()

@@ -22,7 +22,7 @@ import net.corda.core.transactions.LedgerTransaction
 class AgreementContract : Contract {
     companion object {
         @JvmStatic
-        val ID = "net.corda.samples.example.contracts.IOUContract"
+        val ID = "com.isbank.agreement.contracts.AgreementContract"
     }
 
     /**

@@ -8,8 +8,8 @@
             <column name="output_index" type="INT"/>
             <column name="transaction_id" type="NVARCHAR(64)"/>
             <column name="value" type="int"/>
-            <column name="lender" type="NVARCHAR(64)"/>
-            <column name="borrower" type="NVARCHAR(64)"/>
+            <column name="issuer" type="NVARCHAR(64)"/>
+            <column name="acquirer" type="NVARCHAR(64)"/>
             <column name="linear_id" type="NVARCHAR(64)"/>
         </createTable>
     </changeSet>
