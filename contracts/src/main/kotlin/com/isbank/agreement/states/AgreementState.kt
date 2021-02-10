@@ -20,8 +20,7 @@ import java.util.*
  * @param acquirer the party receiving and approving the IOU.
  */
 @BelongsToContract(AgreementContract::class)
-data class AgreementState(val value: Int,
-                          val issuer: Party,
+data class AgreementState(val issuer: Party,
                           val acquirer: Party,
                           val pan : String,
         //val merchant: Account?,
