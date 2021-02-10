@@ -6,6 +6,44 @@
 	},
 	"item": [
 		{
+			"name": "Create Account",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "accountName",
+							"value": "{{Account name}}",
+							"type": "text"
+						}
+					],
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:10050/accounts/create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "10050",
+					"path": [
+						"accounts",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Create IOU",
 			"protocolProfileBehavior": {
 				"disabledSystemHeaders": {}
@@ -46,6 +84,13 @@
 				}
 			},
 			"response": []
+		}
+	],
+	"variable": [
+		{
+			"id": "b6f07334-4553-46bd-9534-522c89aa75e6",
+			"key": "Account name",
+			"value": "<account name>"
 		}
 	],
 	"protocolProfileBehavior": {}

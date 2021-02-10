@@ -1,25 +1,26 @@
 package com.isbank.agreement.webserver
 
+import com.r3.corda.lib.accounts.contracts.states.AccountInfo;
+import com.isbank.agreement.flows.AccountService.CreateNewAccount
+import com.isbank.agreement.flows.AccountService.FetchAllAccounts
+import com.isbank.agreement.flows.ExampleFlow.Initiator
+import com.isbank.agreement.states.IOUState
+import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.utilities.getOrThrow
-import com.isbank.agreement.flows.ExampleFlow.Initiator
-import com.isbank.agreement.states.IOUState
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import javax.servlet.http.HttpServletRequest
-import net.corda.client.jackson.JacksonSupport
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.web.bind.annotation.*
+import javax.servlet.http.HttpServletRequest
+
 
 val SERVICE_NAMES = listOf("Notary", "Network Map Service")
 
@@ -63,6 +64,42 @@ class Controller(rpc: NodeRPCConnection) {
                 .map { it.legalIdentities.first().name }
                 //filter out myself, notary and eventual network map started by driver
                 .filter { it.organisation !in (SERVICE_NAMES + myLegalName.organisation) })
+    }
+
+    /**
+     * Gets all accounts using the Accounts SDK.
+     * Example request:
+     * curl -X GET 'http://localhost:10050/v1/accounts'
+     */
+    @GetMapping(value = ["/accounts"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    private fun accounts(): ResponseEntity<String?>? {
+        var response: ResponseEntity<String?>?
+        try {
+            val allAccounts: List<StateAndRef<AccountInfo>> = proxy.startFlowDynamic<List<StateAndRef<AccountInfo>>>(FetchAllAccounts::class.java, *arrayOf<Any>()).returnValue.get()
+            var output = ""
+            for (account in allAccounts) output += account
+            response = ResponseEntity.status(HttpStatus.OK).body("AllAccounts: $output")
+        } catch (e: Exception) {
+            response = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.message)
+        }
+        return response
+    }
+
+    /**
+     * Creates an account using the Accounts SDK.
+     * Example request:
+     * curl -X POST 'http://localhost:10050/v1/accounts/create?accountName=MyNewAccountName'
+     */
+    @PostMapping(value = ["/accounts/create"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    fun createAccount(@RequestParam("accountName") accountName: String): ResponseEntity<String?> {
+        val response: ResponseEntity<String?>
+        response = try {
+            proxy.startFlowDynamic<StateAndRef<AccountInfo>>(CreateNewAccount::class.java, *arrayOf<Any>(accountName)).returnValue.get()
+            ResponseEntity.status(HttpStatus.CREATED).body("Account with name: $accountName")
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.message)
+        }
+        return response
     }
 
     /**
