@@ -1,7 +1,5 @@
 package com.isbank.agreement.webserver
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.corda.client.jackson.JacksonSupport.createNonRpcMapper
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
@@ -11,7 +9,6 @@ import com.isbank.agreement.flows.ExampleFlow.Initiator
 import com.isbank.agreement.states.IOUState
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -79,7 +76,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Initiates a flow to agree an IOU between two parties.
      *
-     * Once the flow finishes it will have written the IOU to ledger. Both the lender and the borrower will be able to
+     * Once the flow finishes it will have written the IOU to ledger. Both the issuer and the acquirer will be able to
      * see it when calling /spring/api/ious on their respective nodes.
      *
      * This end-point takes a Party name parameter as part of the path. If the serving node can't find the other party
@@ -116,7 +113,7 @@ class Controller(rpc: NodeRPCConnection) {
      */
     @GetMapping(value = ["my-ious"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMyIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
-        val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.lender.equals(proxy.nodeInfo().legalIdentities.first()) }
+        val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) }
         return ResponseEntity.ok(myious)
     }
 }

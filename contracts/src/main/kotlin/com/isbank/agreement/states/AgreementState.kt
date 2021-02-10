@@ -20,10 +20,13 @@ import java.util.*
  * @param acquirer the party receiving and approving the IOU.
  */
 @BelongsToContract(IOUContract::class)
-data class IOUState(val value: Int,
+data class AgreementState(val value: Int,
                           val issuer: Party,
                           val acquirer: Party,
-                          val dueDate: Date,
+                          val pan : String,
+                          //val merchant: Account?,
+                          val timeAndDate: Date,
+                          val validUntil : Date,
                           val agreementStateID: UUID,
                           val amount: Amount<Currency>,
                           override val linearId: UniqueIdentifier = UniqueIdentifier()):

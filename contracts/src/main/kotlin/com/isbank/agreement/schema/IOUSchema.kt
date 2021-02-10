@@ -29,10 +29,10 @@ object IOUSchemaV1 : MappedSchema(
     @Entity
     @Table(name = "iou_states")
     class PersistentIOU(
-            @Column(name = "lender")
+            @Column(name = "issuer")
             var lenderName: String,
 
-            @Column(name = "borrower")
+            @Column(name = "acquirer")
             var borrowerName: String,
 
             @Column(name = "value")

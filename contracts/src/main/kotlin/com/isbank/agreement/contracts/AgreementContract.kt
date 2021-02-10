@@ -1,6 +1,6 @@
 package com.isbank.agreement.contracts
 
-import com.isbank.agreement.states.IOUState
+import com.isbank.agreement.states.AgreementState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
 import net.corda.core.contracts.requireSingleCommand
@@ -10,16 +10,16 @@ import net.corda.core.transactions.LedgerTransaction
 /**
  * A implementation of a basic smart contract in Corda.
  *
- * This contract enforces rules regarding the creation of a valid [IOUState], which in turn encapsulates an [IOUState].
+ * This contract enforces rules regarding the creation of a valid [AgreementState], which in turn encapsulates an [AgreementState].
  *
- * For a new [IOUState] to be issued onto the ledger, a transaction is required which takes:
+ * For a new [AgreementState] to be issued onto the ledger, a transaction is required which takes:
  * - Zero input states.
- * - One output state: the new [IOUState].
+ * - One output state: the new [AgreementState].
  * - An Create() command with the public keys of both the issuer and the acquirer.
  *
  * All contracts must sub-class the [Contract] interface.
  */
-class IOUContract : Contract {
+class AgreementContract : Contract {
     companion object {
         @JvmStatic
         val ID = "net.corda.samples.example.contracts.IOUContract"
@@ -35,7 +35,7 @@ class IOUContract : Contract {
             // Generic constraints around the IOU transaction.
             "No inputs should be consumed when issuing an IOU." using (tx.inputs.isEmpty())
             "Only one output state should be created." using (tx.outputs.size == 1)
-            val out = tx.outputsOfType<IOUState>().single()
+            val out = tx.outputsOfType<AgreementState>().single()
             "The issuer and the acquirer cannot be the same entity." using (out.issuer != out.acquirer)
             "All of the participants must be signers." using (command.signers.containsAll(out.participants.map { it.owningKey }))
 

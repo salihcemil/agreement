@@ -13,6 +13,8 @@ import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
 import com.isbank.agreement.contracts.IOUContract
 import com.isbank.agreement.states.IOUState
+import net.corda.core.contracts.Amount
+import java.util.*
 
 
 /**
@@ -77,7 +79,7 @@ object ExampleFlow {
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val iouState = IOUState(iouValue, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val iouState = IOUState(iouValue, serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD")) )
             val txCommand = Command(IOUContract.Commands.Create(), iouState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
                     .addOutputState(iouState, IOUContract.ID)

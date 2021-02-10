@@ -98,8 +98,8 @@ class IOUFlowTests {
 
             val recordedState = txOutputs[0].data as IOUState
             assertEquals(recordedState.value, iouValue)
-            assertEquals(recordedState.lender, a.info.singleIdentity())
-            assertEquals(recordedState.borrower, b.info.singleIdentity())
+            assertEquals(recordedState.issuer, a.info.singleIdentity())
+            assertEquals(recordedState.acquirer, b.info.singleIdentity())
         }
     }
 
@@ -118,8 +118,8 @@ class IOUFlowTests {
                 assertEquals(1, ious.size)
                 val recordedState = ious.single().state.data
                 assertEquals(recordedState.value, iouValue)
-                assertEquals(recordedState.lender, a.info.singleIdentity())
-                assertEquals(recordedState.borrower, b.info.singleIdentity())
+                assertEquals(recordedState.issuer, a.info.singleIdentity())
+                assertEquals(recordedState.acquirer, b.info.singleIdentity())
             }
         }
     }
