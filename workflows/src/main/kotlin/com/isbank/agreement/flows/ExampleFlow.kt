@@ -73,7 +73,8 @@ object ExampleFlow {
              *
              *  * - For production you always want to use Method 2 as it guarantees the expected notary is returned.
              */
-            val notary = serviceHub.networkMapCache.notaryIdentities.single() // METHOD 1
+            val notary = NotaryUtils.getNotary(serviceHub)
+            // serviceHub.networkMapCache.notaryIdentities.single() // METHOD 1
             // val notary = serviceHub.networkMapCache.getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")) // METHOD 2
 
             // Stage 1.
