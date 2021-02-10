@@ -80,7 +80,7 @@ object ExampleFlow {
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val iouState = IOUState(iouValue, serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD")) )
+            val iouState = IOUState(serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD")) )
             val txCommand = Command(IOUContract.Commands.Create(), iouState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
                     .addOutputState(iouState, IOUContract.ID)
@@ -118,7 +118,7 @@ object ExampleFlow {
                     val output = stx.tx.outputs.single().data
                     "This must be an IOU transaction." using (output is IOUState)
                     val iou = output as IOUState
-                    "I won't accept IOUs with a value over 100." using (iou.value <= 100)
+                    //"I won't accept IOUs with a value over 100." using (iou.value <= 100) //salihcemil
                 }
             }
             val txId = subFlow(signTransactionFlow).id

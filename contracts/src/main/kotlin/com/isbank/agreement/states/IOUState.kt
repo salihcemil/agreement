@@ -20,8 +20,7 @@ import java.util.*
  * @param acquirer the party receiving and approving the IOU.
  */
 @BelongsToContract(IOUContract::class)
-data class IOUState(val value: Int,
-                          val issuer: Party,
+data class IOUState(val issuer: Party,
                           val acquirer: Party,
                           val dueDate: Date,
                           val agreementStateID: UUID,
@@ -36,7 +35,6 @@ data class IOUState(val value: Int,
             is IOUSchemaV1 -> IOUSchemaV1.PersistentIOU(
                     this.issuer.name.toString(),
                     this.acquirer.name.toString(),
-                    this.value,
                     this.linearId.id
             )
             else -> throw IllegalArgumentException("Unrecognised schema $schema")
