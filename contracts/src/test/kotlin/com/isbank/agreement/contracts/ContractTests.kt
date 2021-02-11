@@ -83,15 +83,4 @@ class ContractTests {
             }
         }
     }
-
-    @Test
-    fun `cannot create negative-value IOUs`() {
-        ledgerServices.ledger {
-            transaction {
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
-                command(listOf(megaCorp.publicKey, miniCorp.publicKey), IOUContract.Commands.Create())
-                `fails with`("The IOU's value must be non-negative.")
-            }
-        }
-    }
 }

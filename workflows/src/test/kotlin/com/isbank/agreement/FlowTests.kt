@@ -105,7 +105,7 @@ class IOUFlowTests {
 
     @Test
     fun `flow records the correct IOU in both parties' vaults`() {
-        val iouValue = 1
+        val iouValue = 1L
         val flow = ExampleFlow.Initiator(1, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
@@ -117,7 +117,7 @@ class IOUFlowTests {
                 val ious = node.services.vaultService.queryBy<IOUState>().states
                 assertEquals(1, ious.size)
                 val recordedState = ious.single().state.data
-                //assertEquals(recordedState.value, iouValue)
+                assertEquals(recordedState.amount.quantity, iouValue)
                 assertEquals(recordedState.issuer, a.info.singleIdentity())
                 assertEquals(recordedState.acquirer, b.info.singleIdentity())
             }

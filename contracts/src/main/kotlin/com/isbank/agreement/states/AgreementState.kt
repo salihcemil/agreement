@@ -23,10 +23,8 @@ import java.util.*
 data class AgreementState(val issuer: Party,
                           val acquirer: Party,
                           val pan : String,
-        //val merchant: Account?,
                           val timeAndDate: Date,
                           val validUntil : Date,
-                          val agreementStateID: UUID,
                           val amount: Amount<Currency>,
                           override val linearId: UniqueIdentifier = UniqueIdentifier()):
         LinearState, QueryableState {
@@ -41,10 +39,9 @@ data class AgreementState(val issuer: Party,
                 this.pan,
                 this.timeAndDate,
                 this.validUntil,
-                this.agreementStateID,
-                this.amount.toDecimal().toInt(),
-                this.amount.toString(),
-                    this.linearId.id
+                this.amount.quantity,
+                this.amount.token.currencyCode,
+                this.linearId.id
             )
             else -> throw IllegalArgumentException("Unrecognised schema $schema")
         }

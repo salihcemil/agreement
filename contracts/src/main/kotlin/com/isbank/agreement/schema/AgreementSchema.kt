@@ -44,16 +44,11 @@ object AgreementSchemaV1 : MappedSchema(
         @Column(name = "validUntil")
         var t_validUntil: Date,
 
-        @Column(name = "agreementStateID")
-        @Type(type = "uuid-char")
-        var t_agreementStateID: UUID,
-
         @Column(name = "amount")
-        var t_amount: Int,
+        var t_amount: Long,
 
         @Column(name = "currency")
         var t_currency: String,
-
 
         @Column(name = "linear_id")
         @Type(type = "uuid-char")
@@ -62,6 +57,6 @@ object AgreementSchemaV1 : MappedSchema(
         // Default constructor required by hibernate.
         // constructor(): this("", "", t_pan:"", t_timeAndDate, t_validUntil, t_agreementStateID:UUID, UUID.randomUUID())
 
-        constructor() : this("", "", "", Date(),Date(), UUID.fromString(""), 0, "", UUID.randomUUID())
+        constructor() : this("", "", "", Date(), Date(), 0, "", UUID.randomUUID())
     }
 }
