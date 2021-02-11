@@ -62,6 +62,6 @@ object AgreementSchemaV1 : MappedSchema(
         // Default constructor required by hibernate.
         // constructor(): this("", "", t_pan:"", t_timeAndDate, t_validUntil, t_agreementStateID:UUID, UUID.randomUUID())
 
-        constructor() : this("", "", "", Date(), Date(), UUID.randomUUID(), 0, "", UUID.randomUUID())
+        constructor() : this("", "", "", Date(),Date(), UUID.fromString(""), 0, "", UUID.randomUUID())
     }
 }
