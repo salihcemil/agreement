@@ -35,7 +35,13 @@ object IOUSchemaV1 : MappedSchema(
             @Column(name = "acquirer")
             var acquirerName: String,
 
-            @Column(name = "agreementStateID")
+            @Column(name = "amount")
+            var t_amount: Long,
+
+            @Column(name = "currency")
+            var t_currency: String,
+
+            @Column(name = "agreementstate_id")
             @Type(type = "uuid-char")
             var t_agreementStateID: UUID,
 
@@ -44,6 +50,6 @@ object IOUSchemaV1 : MappedSchema(
             var linearId: UUID
     ) : PersistentState() {
         // Default constructor required by hibernate.
-        constructor(): this("", "", UUID.randomUUID(), UUID.randomUUID())
+        constructor(): this("", "", 0, "", UUID.randomUUID(), UUID.randomUUID())
     }
 }

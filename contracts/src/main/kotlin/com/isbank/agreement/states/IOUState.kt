@@ -35,6 +35,8 @@ data class IOUState(val issuer: Party,
             is IOUSchemaV1 -> IOUSchemaV1.PersistentIOU(
                     this.issuer.name.toString(),
                     this.acquirer.name.toString(),
+                    this.amount.quantity,
+                    this.amount.token.currencyCode,
                     this.agreementStateID,
                     this.linearId.id
             )
