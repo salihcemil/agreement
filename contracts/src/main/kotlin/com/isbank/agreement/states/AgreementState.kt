@@ -36,6 +36,13 @@ data class AgreementState(val issuer: Party,
     override fun generateMappedObject(schema: MappedSchema): PersistentState {
         return when (schema) {
             is AgreementSchemaV1 -> AgreementSchemaV1.PersistentAgreement(
+                this.issuer.name.toString(),
+                this.acquirer.name.toString(),
+                this.pan,
+       //         this.timeAndDate,
+       //         this.validUntil,
+       //         this.agreementStateID,
+       //??         this.amount,
                     this.linearId.id
             )
             else -> throw IllegalArgumentException("Unrecognised schema $schema")

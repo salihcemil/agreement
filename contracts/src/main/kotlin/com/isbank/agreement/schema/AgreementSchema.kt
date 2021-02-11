@@ -29,11 +29,35 @@ object AgreementSchemaV1 : MappedSchema(
     @Entity
     @Table(name = "agreement_states")
     class PersistentAgreement(
+        @Column(name = "issuer")
+        var issuerName: String,
+
+        @Column(name = "acquirer")
+        var acquirerName: String,
+
+        @Column(name = "pan")
+        var t_pan: String,
+
+//        @Column(name ="timeAndDate")
+//        var t_timeAndDate:Date,
+
+//        @Column(name ="validUntil")
+//        var t_validUntil:Date,
+
+ //       @Column(name ="agreementStateID")
+ //       @Type(type = "uuid-char")
+ //       var t_agreementStateID:UUID,
+
+  //  ??    @Column(name ="amount")
+  //  ??    var t_amount:Amount<Currency>,
+
             @Column(name = "linear_id")
             @Type(type = "uuid-char")
             var linearId: UUID
     ) : PersistentState() {
         // Default constructor required by hibernate.
-        constructor(): this(UUID.randomUUID())
+       // constructor(): this("", "", t_pan:"", t_timeAndDate, t_validUntil, t_agreementStateID:UUID, UUID.randomUUID())
+
+        constructor(): this("", "", "",UUID.randomUUID())
     }
 }
