@@ -39,10 +39,11 @@ data class AgreementState(val issuer: Party,
                 this.issuer.name.toString(),
                 this.acquirer.name.toString(),
                 this.pan,
-       //         this.timeAndDate,
-       //         this.validUntil,
-       //         this.agreementStateID,
-       //??         this.amount,
+                this.timeAndDate,
+                this.validUntil,
+                this.agreementStateID,
+                this.amount.toDecimal().toInt(),
+                this.amount.toString(),
                     this.linearId.id
             )
             else -> throw IllegalArgumentException("Unrecognised schema $schema")

@@ -38,26 +38,30 @@ object AgreementSchemaV1 : MappedSchema(
         @Column(name = "pan")
         var t_pan: String,
 
-//        @Column(name ="timeAndDate")
-//        var t_timeAndDate:Date,
+        @Column(name = "timeAndDate")
+        var t_timeAndDate: Date,
 
-//        @Column(name ="validUntil")
-//        var t_validUntil:Date,
+        @Column(name = "validUntil")
+        var t_validUntil: Date,
 
- //       @Column(name ="agreementStateID")
- //       @Type(type = "uuid-char")
- //       var t_agreementStateID:UUID,
+        @Column(name = "agreementStateID")
+        @Type(type = "uuid-char")
+        var t_agreementStateID: UUID,
 
-  //  ??    @Column(name ="amount")
-  //  ??    var t_amount:Amount<Currency>,
+        @Column(name = "amount")
+        var t_amount: Int,
 
-            @Column(name = "linear_id")
-            @Type(type = "uuid-char")
-            var linearId: UUID
+        @Column(name = "currency")
+        var t_currency: String,
+
+
+        @Column(name = "linear_id")
+        @Type(type = "uuid-char")
+        var linearId: UUID
     ) : PersistentState() {
         // Default constructor required by hibernate.
-       // constructor(): this("", "", t_pan:"", t_timeAndDate, t_validUntil, t_agreementStateID:UUID, UUID.randomUUID())
+        // constructor(): this("", "", t_pan:"", t_timeAndDate, t_validUntil, t_agreementStateID:UUID, UUID.randomUUID())
 
-        constructor(): this("", "", "",UUID.randomUUID())
+        constructor() : this("", "", "", Date(), Date(), UUID.randomUUID(), 0, "", UUID.randomUUID())
     }
 }
