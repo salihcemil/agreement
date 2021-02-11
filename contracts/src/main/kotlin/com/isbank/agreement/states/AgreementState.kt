@@ -11,13 +11,13 @@ import net.corda.core.schemas.QueryableState
 import java.util.*
 
 /**
- * The state object recording IOU agreements between two parties.
+ * The state object recording  agreements between two parties.
  *
  * A state must implement [ContractState] or one of its descendants.
  *
- * @param value the value of the IOU.
- * @param issuer the party issuing the IOU.
- * @param acquirer the party receiving and approving the IOU.
+
+ * @param issuer the party issuing the agreement.
+ * @param acquirer the party receiving and approving .
  */
 @BelongsToContract(AgreementContract::class)
 data class AgreementState(val issuer: Party,
