@@ -1,9 +1,8 @@
 package com.isbank.agreement
 
-import net.corda.core.contracts.TransactionVerificationException
 import net.corda.core.node.services.queryBy
 import net.corda.core.utilities.getOrThrow
-import com.isbank.agreement.flows.ExampleFlow
+import com.isbank.agreement.flows.CreateIOU
 import com.isbank.agreement.states.IOUState
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.MockNetwork
@@ -14,7 +13,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class IOUFlowTests {
     private lateinit var network: MockNetwork
@@ -30,7 +28,7 @@ class IOUFlowTests {
         a = network.createPartyNode()
         b = network.createPartyNode()
         // For real nodes this happens automatically, but we have to manually register the flow for tests.
-        listOf(a, b).forEach { it.registerInitiatedFlow(ExampleFlow.Acceptor::class.java) }
+        listOf(a, b).forEach { it.registerInitiatedFlow(CreateIOU.Acceptor::class.java) }
         network.runNetwork()
     }
 
@@ -51,7 +49,7 @@ class IOUFlowTests {
 
     @Test
     fun `SignedTransaction returned by the flow is signed by the initiator`() {
-        val flow = ExampleFlow.Initiator(1, b.info.singleIdentity())
+        val flow = CreateIOU.Initiator(1, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
 
@@ -61,7 +59,7 @@ class IOUFlowTests {
 
     @Test
     fun `SignedTransaction returned by the flow is signed by the acceptor`() {
-        val flow = ExampleFlow.Initiator(1, b.info.singleIdentity())
+        val flow = CreateIOU.Initiator(1, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
 
@@ -71,7 +69,7 @@ class IOUFlowTests {
 
     @Test
     fun `flow records a transaction in both parties' transaction storages`() {
-        val flow = ExampleFlow.Initiator(1, b.info.singleIdentity())
+        val flow = CreateIOU.Initiator(1, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
@@ -85,7 +83,7 @@ class IOUFlowTests {
     @Test
     fun `recorded transaction has no inputs and a single output, the input IOU`() {
         val iouValue = 1L
-        val flow = ExampleFlow.Initiator(iouValue, b.info.singleIdentity())
+        val flow = CreateIOU.Initiator(iouValue, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
@@ -106,7 +104,7 @@ class IOUFlowTests {
     @Test
     fun `flow records the correct IOU in both parties' vaults`() {
         val iouValue = 1L
-        val flow = ExampleFlow.Initiator(1L, b.info.singleIdentity())
+        val flow = CreateIOU.Initiator(1L, b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
         future.getOrThrow()

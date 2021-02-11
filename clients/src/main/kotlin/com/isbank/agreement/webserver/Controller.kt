@@ -1,11 +1,15 @@
 package com.isbank.agreement.webserver
 
+import com.isbank.agreement.dataobjects.AgreementDO
 import com.r3.corda.lib.accounts.contracts.states.AccountInfo;
 import com.isbank.agreement.flows.AccountService.CreateNewAccount
 import com.isbank.agreement.flows.AccountService.FetchAllAccounts
-import com.isbank.agreement.flows.ExampleFlow.Initiator
+import com.isbank.agreement.flows.CreateAgreementFlow
+import com.isbank.agreement.flows.CreateIOU
+import com.isbank.agreement.states.AgreementState
 import com.isbank.agreement.states.IOUState
 import net.corda.client.jackson.JacksonSupport
+import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
@@ -19,6 +23,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.web.bind.annotation.*
+import java.util.*
 import javax.servlet.http.HttpServletRequest
 
 
@@ -135,7 +140,7 @@ class Controller(rpc: NodeRPCConnection) {
         val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body("Party named $partyName cannot be found.\n")
 
         return try {
-            val signedTx = proxy.startTrackedFlow(::Initiator, iouValue, otherParty).returnValue.getOrThrow()
+            val signedTx = proxy.startTrackedFlow(CreateIOU::Initiator, iouValue, otherParty).returnValue.getOrThrow()
             ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
 
         } catch (ex: Throwable) {
@@ -151,5 +156,67 @@ class Controller(rpc: NodeRPCConnection) {
     fun getMyIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
         val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) }
         return ResponseEntity.ok(myious)
+    }
+
+    /**
+     * Initiates a flow to agree an Agreement between two parties.
+     *
+     * Once the flow finishes it will have written the Agreement to ledger. Both the issuer and the acquirer will be able to
+     * see it when calling /spring/api/agreements on their respective nodes.
+     *
+     * This end-point takes a Party name parameter as part of the path. If the serving node can't find the other party
+     * in its network map cache, it will return an HTTP bad request.
+     *
+     * The flow is invoked asynchronously. It returns a future when the flow's call() method returns.
+     */
+    @PostMapping(value = ["agreements/create"], produces = [MediaType.TEXT_PLAIN_VALUE], headers = ["Content-Type=application/x-www-form-urlencoded"])
+    fun createAgreement(request: HttpServletRequest): ResponseEntity<String> {
+        val amountQuantity = request.getParameter("amountQuantity").toLong()
+        val amountCurrencyCode = request.getParameter("amountCurrencyCode")
+        if (amountQuantity <= 0 ) {
+            return ResponseEntity.badRequest().body("Query parameter 'amountQuantity' must be non-negative.\n")
+        }
+        if(amountCurrencyCode.isEmpty()){
+            return ResponseEntity.badRequest().body("Query parameter 'amountCurrencyCode' must not be empty.\n")
+        }
+        val amount = Amount<Currency>(amountQuantity, Currency.getInstance(amountCurrencyCode))
+        val pan = request.getParameter("pan")
+        val issuer = request.getParameter("issuer")
+        if(issuer == null){
+            return ResponseEntity.badRequest().body("Query parameter 'issuer' must not be null.\n")
+        }
+        if(pan.isEmpty()){
+            return ResponseEntity.badRequest().body("Query parameter 'pan' must not be empty.\n")
+        }
+        val partyX500Name = CordaX500Name.parse(issuer)
+        val issuerParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body("Party named $issuer cannot be found.\n")
+
+        return try {
+            val signedTx = proxy.startTrackedFlow(CreateAgreementFlow::Initiator, issuerParty, pan, amount).returnValue.getOrThrow()
+            ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
+
+        } catch (ex: Throwable) {
+            logger.error(ex.message, ex)
+            ResponseEntity.badRequest().body(ex.message!!)
+        }
+    }
+
+    /**
+     * Displays all Agreement states that only this node has been involved in.
+     */
+    @GetMapping(value = ["agreements"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getMyAgreements(): ResponseEntity<List<AgreementDO>> {
+        val myagreements = proxy.vaultQuery<AgreementState>(contractStateType = AgreementState::class.java).states
+
+        val agreementDOs = myagreements.map {
+            AgreementDO(it.state.data.issuer.name.toString(),
+                    it.state.data.acquirer.name.toString(),
+                    it.state.data.pan,
+                    it.state.data.timeAndDate,
+                    it.state.data.validUntil,
+                    it.state.data.amount,
+                    it.state.data.linearId)
+        }
+        return ResponseEntity.ok(agreementDOs)
     }
 }

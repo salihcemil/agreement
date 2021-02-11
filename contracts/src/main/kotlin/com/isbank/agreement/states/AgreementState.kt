@@ -8,6 +8,7 @@ import net.corda.core.identity.Party
 import net.corda.core.schemas.MappedSchema
 import net.corda.core.schemas.PersistentState
 import net.corda.core.schemas.QueryableState
+import net.corda.core.serialization.CordaSerializable
 import java.util.*
 
 /**
@@ -20,7 +21,8 @@ import java.util.*
  * @param acquirer the party receiving and approving .
  */
 @BelongsToContract(AgreementContract::class)
-data class AgreementState(val issuer: Party,
+data class AgreementState(val status: Status,
+                          val issuer: Party,
                           val acquirer: Party,
                           val pan : String,
                           val timeAndDate: Date,
@@ -48,4 +50,20 @@ data class AgreementState(val issuer: Party,
     }
 
     override fun supportedSchemas(): Iterable<MappedSchema> = listOf(AgreementSchemaV1)
+    fun withNewStatus(expired: Status): AgreementState {
+        return AgreementState(Status.EXPIRED,
+                this.issuer,
+                this.acquirer,
+                this.pan,
+                this.timeAndDate,
+                this.validUntil,
+                this.amount,
+                this.linearId)
+    }
+}
+
+@CordaSerializable
+enum class Status
+{
+    PROPOSED,ACCEPTED,REJECTED,EXPIRED;
 }

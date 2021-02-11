@@ -1,8 +1,6 @@
 package com.isbank.agreement.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.isbank.agreement.flows.ExampleFlow.Acceptor
-import com.isbank.agreement.flows.ExampleFlow.Initiator
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -11,34 +9,39 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
-import com.isbank.agreement.contracts.IOUContract
-import com.isbank.agreement.states.IOUState
+import com.isbank.agreement.states.AgreementState
+import com.isbank.agreement.contracts.AgreementContract
+import com.isbank.agreement.states.Status
 import net.corda.core.contracts.Amount
+import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 /**
- * This flow allows two parties (the [Initiator] and the [Acceptor]) to come to an agreement about the IOU encapsulated
- * within an [IOUState].
+ * This flow allows two parties (the [Initiator] and the [Acceptor]) to come to an agreement about the Agreement encapsulated
+ * within an [AgreementState].
  *
- * In our simple example, the [Acceptor] always accepts a valid IOU.
+ * In our simple example, the [Acceptor] always accepts a valid Agreement.
  *
  * These flows have deliberately been implemented by using only the call() method for ease of understanding. In
- * practice we would recommend splitting up the various stages of the flow into sub-routines.
+ * practice we would recommend splitting up the varAgreements stages of the flow into sub-routines.
  *
  * All methods called within the [FlowLogic] sub-class need to be annotated with the @Suspendable annotation.
  */
-object ExampleFlow {
+object ExpireAgreementFlow {
     @InitiatingFlow
     @StartableByRPC
-    class Initiator(val iouValue: Long,
-                    val otherParty: Party) : FlowLogic<SignedTransaction>() {
+    @StartableByService
+    class Initiator(val agreementStateID: UniqueIdentifier) : FlowLogic<SignedTransaction>() {
         /**
          * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
          * checkpoint is reached in the code. See the 'progressTracker.currentStep' expressions within the call() function.
          */
         companion object {
-            object GENERATING_TRANSACTION : Step("Generating transaction based on new IOU.")
+            object GENERATING_TRANSACTION : Step("Generating transaction based on new Agreement.")
             object VERIFYING_TRANSACTION : Step("Verifying contract constraints.")
             object SIGNING_TRANSACTION : Step("Signing transaction with our private key.")
             object GATHERING_SIGS : Step("Gathering the counterparty's signature.") {
@@ -65,25 +68,21 @@ object ExampleFlow {
          */
         @Suspendable
         override fun call(): SignedTransaction {
+            val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(agreementStateID))
+            val results = serviceHub.vaultService.queryBy<AgreementState>(criteria)
+            val inputAgreementState = results.states.first()
+            val outputAgreementState = inputAgreementState.state.data.withNewStatus(Status.EXPIRED)
 
             // Obtain a reference from a notary we wish to use.
-            /**
-             *  METHOD 1: Take first notary on network, WARNING: use for test, non-prod environments, and single-notary networks only!*
-             *  METHOD 2: Explicit selection of notary by CordaX500Name - argument can by coded in flow or parsed from config (Preferred)
-             *
-             *  * - For production you always want to use Method 2 as it guarantees the expected notary is returned.
-             */
             val notary = NotaryUtils.getNotary(serviceHub)
-            // serviceHub.networkMapCache.notaryIdentities.single() // METHOD 1
-            // val notary = serviceHub.networkMapCache.getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")) // METHOD 2
 
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val iouState = IOUState(serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), Amount(iouValue, Currency.getInstance("USD")) )
-            val txCommand = Command(IOUContract.Commands.Create(), iouState.participants.map { it.owningKey })
+            val txCommand = Command(AgreementContract.Commands.Expire(), inputAgreementState.state.data.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
-                    .addOutputState(iouState, IOUContract.ID)
+                    .addInputState(inputAgreementState)
+                    .addOutputState(outputAgreementState, AgreementContract.ID)
                     .addCommand(txCommand)
 
             // Stage 2.
@@ -99,13 +98,14 @@ object ExampleFlow {
             // Stage 4.
             progressTracker.currentStep = GATHERING_SIGS
             // Send the state to the counterparty, and receive it back with their signature.
-            val otherPartySession = initiateFlow(otherParty)
-            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERING_SIGS.childProgressTracker()))
+            val otherSessions = listOf(inputAgreementState.state.data.issuer, inputAgreementState.state.data.acquirer)
+            val sessions = (otherSessions - ourIdentity).map { initiateFlow(it) }.toSet()
+            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, sessions, GATHERING_SIGS.childProgressTracker()))
 
             // Stage 5.
             progressTracker.currentStep = FINALISING_TRANSACTION
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession), FINALISING_TRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(fullySignedTx, sessions, FINALISING_TRANSACTION.childProgressTracker()))
         }
     }
 
@@ -116,13 +116,14 @@ object ExampleFlow {
             val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
                     val output = stx.tx.outputs.single().data
-                    "This must be an IOU transaction." using (output is IOUState)
-                    val iou = output as IOUState
-                    "I won't accept IOUs with a value over 100." using (iou.amount.quantity <= 100L)
+                    "This must be an Agreement transaction." using (output is AgreementState)
+                    val Agreement = output as AgreementState
+                    "Issuer is not Acquirer" using (Agreement.issuer != Agreement.acquirer)
+                    "PAN is invalid" using (Agreement.pan.isNotEmpty()) // TODO: Define valid PAN
+                    "The AgreementState should be set to EXPIRED." using (Agreement.status == Status.EXPIRED)
                 }
             }
             val txId = subFlow(signTransactionFlow).id
-
             return subFlow(ReceiveFinalityFlow(otherPartySession, expectedTxId = txId))
         }
     }
