@@ -51,7 +51,7 @@ data class AgreementState(val status: Status,
 
     override fun supportedSchemas(): Iterable<MappedSchema> = listOf(AgreementSchemaV1)
     fun withNewStatus(expired: Status): AgreementState {
-        return AgreementState(Status.EXPIRED,
+        return AgreementState(expired,
                 this.issuer,
                 this.acquirer,
                 this.pan,

@@ -31,17 +31,32 @@ class AgreementContract : Contract {
      * considered valid.
      */
     override fun verify(tx: LedgerTransaction) {
-        val command = tx.commands.requireSingleCommand<Commands.Propose>()
-        requireThat {
-            "No inputs should be consumed when issuing an Agreement." using (tx.inputs.isEmpty())
-            "Only one output state should be created." using (tx.outputs.size == 1)
+        val command = tx.commands.requireSingleCommand<AgreementContract.Commands>()
+        when (command.value) {
+            is Commands.Propose -> requireThat {
+                "No inputs should be consumed when issuing an Agreement." using (tx.inputs.isEmpty())
+                "Only one output state should be created." using (tx.outputs.size == 1)
 
-            val output = tx.outputsOfType<AgreementState>().single()
-            "Issuer is not Acquirer" using (output.issuer != output.acquirer)
-            "PAN is invalid" using (output.pan.isNotEmpty()) // TODO: Define valid PAN
-            "Agreement has expired" using (output.validUntil.after(Date(System.currentTimeMillis())))
+                val output = tx.outputsOfType<AgreementState>().single()
+                "Issuer is not Acquirer" using (output.issuer != output.acquirer)
+                "PAN is invalid" using (output.pan.isNotEmpty()) // TODO: Define valid PAN
+                "Agreement has expired" using (output.validUntil.after(Date(System.currentTimeMillis())))
 
-            "Acquirer must be signer." using (command.signers.containsAll(listOf(output.acquirer.owningKey)))
+                "Acquirer must be signer." using (command.signers.containsAll(listOf(output.acquirer.owningKey)))
+            }
+            is Commands.Accept -> requireThat {
+
+            }
+            is Commands.Reject -> requireThat {
+
+            }
+            is Commands.Expire -> requireThat {
+
+            }
+            is Commands.Consume -> requireThat {
+
+            }
+            // TODO else throw exception
         }
     }
 

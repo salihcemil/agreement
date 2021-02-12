@@ -1,18 +1,23 @@
 package com.isbank.agreement.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import com.isbank.agreement.contracts.AgreementContract
+import com.isbank.agreement.dao.AgreementDAOSchemaV1
+import com.isbank.agreement.flows.CreateAgreementFlow.Acceptor
+import com.isbank.agreement.flows.CreateAgreementFlow.Initiator
+import com.isbank.agreement.states.AgreementState
+import com.isbank.agreement.states.Status
+import net.corda.core.contracts.Amount
 import net.corda.core.contracts.Command
-import net.corda.core.contracts.requireThat
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
-import com.isbank.agreement.states.AgreementState
-import com.isbank.agreement.contracts.AgreementContract
-import com.isbank.agreement.states.Status
-import net.corda.core.contracts.Amount
+import net.corda.core.utilities.UntrustworthyData
+import net.corda.core.utilities.unwrap
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -72,10 +77,16 @@ object CreateAgreementFlow {
             // Obtain a reference from a notary we wish to use.
             val notary = NotaryUtils.getNotary(serviceHub)
 
+            val linearId: UniqueIdentifier = UniqueIdentifier()
+            val agreementDAO = AgreementDAOSchemaV1.AgreementDAO(linearId.id, pan)
+            serviceHub.withEntityManager {
+                persist(agreementDAO)
+            }
+
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val AgreementState = AgreementState(Status.PROPOSED, issuer, serviceHub.myInfo.legalIdentities.first(), pan, timeAndDate, validUntil, amount)
+            val AgreementState = AgreementState(Status.PROPOSED, issuer, serviceHub.myInfo.legalIdentities.first(), pan, timeAndDate, validUntil, amount, linearId)
             val txCommand = Command(AgreementContract.Commands.Propose(), listOf(serviceHub.myInfo.legalIdentities.first().owningKey))
             val txBuilder = TransactionBuilder(notary)
                     .addOutputState(AgreementState, AgreementContract.ID)
@@ -95,6 +106,7 @@ object CreateAgreementFlow {
             progressTracker.currentStep = GATHERING_SIGS
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(issuer)
+            otherPartySession.send(agreementDAO)
             //val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERING_SIGS.childProgressTracker()))
 
             // Stage 5.
@@ -110,17 +122,17 @@ object CreateAgreementFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-//            val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
-//                override fun checkTransaction(stx: SignedTransaction) = requireThat {
-//                    val output = stx.tx.outputs.single().data
-//                    "This must be an Agreement transaction." using (output is AgreementState)
-//                    val Agreement = output as AgreementState
-//                    "Issuer is not Acquirer" using (Agreement.issuer != Agreement.acquirer)
-//                    "PAN is invalid" using (Agreement.pan.isNotEmpty()) // TODO: Define valid PAN
-//                    "Agreement has expired" using (Agreement.validUntil.before(Date(System.currentTimeMillis())))
-//                    txId = stx
-//                }
-//            }
+            val agreementDAOPacket: UntrustworthyData<AgreementDAOSchemaV1.AgreementDAO> = otherPartySession.receive<AgreementDAOSchemaV1.AgreementDAO>()
+            val agreementDAO: AgreementDAOSchemaV1.AgreementDAO = agreementDAOPacket.unwrap { data ->
+                // Perform checking on the object received.
+                // TODO: Check the received object.
+                // Return the object.
+                data
+            }
+            serviceHub.withEntityManager {
+                persist(agreementDAO)
+            }
+
             return subFlow(ReceiveFinalityFlow(otherPartySession, expectedTxId = txId?.id))
         }
     }

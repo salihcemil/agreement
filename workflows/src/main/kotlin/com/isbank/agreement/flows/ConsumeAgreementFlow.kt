@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  *
  * All methods called within the [FlowLogic] sub-class need to be annotated with the @Suspendable annotation.
  */
-object ExpireAgreementFlow {
+object ConsumeAgreementFlow {
     @InitiatingFlow
     @StartableByRPC
     @StartableByService
@@ -71,7 +71,6 @@ object ExpireAgreementFlow {
             val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(agreementStateID))
             val results = serviceHub.vaultService.queryBy<AgreementState>(criteria)
             val inputAgreementState = results.states.first()
-            val outputAgreementState = inputAgreementState.state.data.withNewStatus(Status.EXPIRED)
 
             // Obtain a reference from a notary we wish to use.
             val notary = NotaryUtils.getNotary(serviceHub)
@@ -79,10 +78,9 @@ object ExpireAgreementFlow {
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val txCommand = Command(AgreementContract.Commands.Expire(), listOf(inputAgreementState.state.data.acquirer.owningKey, inputAgreementState.state.data.issuer.owningKey))
+            val txCommand = Command(AgreementContract.Commands.Consume(), listOf(inputAgreementState.state.data.acquirer.owningKey, inputAgreementState.state.data.issuer.owningKey))
             val txBuilder = TransactionBuilder(notary)
                     .addInputState(inputAgreementState)
-                    .addOutputState(outputAgreementState, AgreementContract.ID)
                     .addCommand(txCommand)
 
             // Stage 2.
@@ -115,12 +113,7 @@ object ExpireAgreementFlow {
         override fun call(): SignedTransaction {
             val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                    val output = stx.tx.outputs.single().data
-                    "This must be an Agreement transaction." using (output is AgreementState)
-                    val Agreement = output as AgreementState
-                    "Issuer is not Acquirer" using (Agreement.issuer != Agreement.acquirer)
-                    "PAN is invalid" using (Agreement.pan.isNotEmpty()) // TODO: Define valid PAN
-                    "The AgreementState should be set to EXPIRED." using (Agreement.status == Status.EXPIRED)
+                    "There must be no outputs." using (stx.tx.outputs.isEmpty())
                 }
             }
             val txId = subFlow(signTransactionFlow).id

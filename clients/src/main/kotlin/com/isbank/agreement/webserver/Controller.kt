@@ -6,12 +6,13 @@ import com.isbank.agreement.flows.AccountService.CreateNewAccount
 import com.isbank.agreement.flows.AccountService.FetchAllAccounts
 import com.isbank.agreement.flows.CreateAgreementFlow
 import com.isbank.agreement.flows.CreateIOU
-import com.isbank.agreement.states.AgreementState
+import com.isbank.agreement.flows.FetchAgreementsFlow
 import com.isbank.agreement.states.IOUState
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
+import net.corda.core.messaging.startFlow
 import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.utilities.getOrThrow
@@ -206,10 +207,12 @@ class Controller(rpc: NodeRPCConnection) {
      */
     @GetMapping(value = ["agreements"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMyAgreements(): ResponseEntity<List<AgreementDO>> {
-        val myagreements = proxy.vaultQuery<AgreementState>(contractStateType = AgreementState::class.java).states
+        val flowHandle = proxy.startFlow(FetchAgreementsFlow::Initiator)
+        val myAgreements = flowHandle.returnValue.get()
 
-        val agreementDOs = myagreements.map {
-            AgreementDO(it.state.data.issuer.name.toString(),
+        val agreementDOs = myAgreements.map {
+            AgreementDO(it.state.data.status.toString(),
+                    it.state.data.issuer.name.toString(),
                     it.state.data.acquirer.name.toString(),
                     it.state.data.pan,
                     it.state.data.timeAndDate,

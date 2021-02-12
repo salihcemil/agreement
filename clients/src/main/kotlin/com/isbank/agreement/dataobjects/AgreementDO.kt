@@ -4,7 +4,8 @@ import net.corda.core.contracts.Amount
 import net.corda.core.contracts.UniqueIdentifier
 import java.util.*
 
-class AgreementDO(val issuerName: String,
+class AgreementDO(val status: String,
+                  val issuerName: String,
                   val acquirerName: String,
                   val pan : String,
                   val timeAndDate: Date,
