@@ -1,12 +1,13 @@
 package com.isbank.agreement.webserver
 
 import com.isbank.agreement.dataobjects.AgreementDO
-import com.r3.corda.lib.accounts.contracts.states.AccountInfo;
+import com.r3.corda.lib.accounts.contracts.states.AccountInfo
 import com.isbank.agreement.flows.AccountService.CreateNewAccount
 import com.isbank.agreement.flows.AccountService.FetchAllAccounts
 import com.isbank.agreement.flows.CreateAgreementFlow
 import com.isbank.agreement.flows.CreateIOU
 import com.isbank.agreement.flows.FetchAgreementsFlow
+import com.isbank.agreement.flows.FetchAllAgreementsFlow
 import com.isbank.agreement.states.IOUState
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.Amount
@@ -32,6 +33,7 @@ val SERVICE_NAMES = listOf("Notary", "Network Map Service")
 
 /**
  * Define your API endpoints here.
+ * Access-Control-Allow-Origin: *
  */
 @RestController
 @RequestMapping("/") // The paths for HTTP requests are relative to this base path.
@@ -42,7 +44,7 @@ class Controller(rpc: NodeRPCConnection) {
         private val logger = LoggerFactory.getLogger(RestController::class.java)
     }
     @Bean
-    open fun mappingJackson2HttpMessageConverter(@Autowired rpcConnection: NodeRPCConnection): MappingJackson2HttpMessageConverter {
+    fun mappingJackson2HttpMessageConverter(@Autowired rpcConnection: NodeRPCConnection): MappingJackson2HttpMessageConverter {
         val mapper = JacksonSupport.createDefaultMapper(rpcConnection.proxy)
         val converter = MappingJackson2HttpMessageConverter()
         converter.objectMapper = mapper
@@ -221,5 +223,26 @@ class Controller(rpc: NodeRPCConnection) {
                     it.state.data.linearId)
         }
         return ResponseEntity.ok(agreementDOs)
+    }
+
+    /**
+     * Displays all Agreement states that only this node has been involved in.
+     */
+    @GetMapping(value = ["agreementsAll"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getMyAllAgreements(): ResponseEntity<List<AgreementDO>> {
+        val flowHandle = proxy.startFlow(FetchAllAgreementsFlow::Initiator)
+        val myAgreements = flowHandle.returnValue.get()
+
+        val agreementDOs = myAgreements.map {
+            AgreementDO(it.state.data.status.toString(),
+                it.state.data.issuer.name.toString(),
+                it.state.data.acquirer.name.toString(),
+                it.state.data.pan,
+                it.state.data.timeAndDate,
+                it.state.data.validUntil,
+                it.state.data.amount,
+                it.state.data.linearId)
+        }
+        return ResponseEntity.ok(agreementDOs);
     }
 }

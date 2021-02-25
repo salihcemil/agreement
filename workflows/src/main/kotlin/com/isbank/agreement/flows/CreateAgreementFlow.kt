@@ -107,7 +107,7 @@ object CreateAgreementFlow {
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(issuer)
             otherPartySession.send(agreementDAO)
-            //val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERING_SIGS.childProgressTracker()))
+            //val fullySignedTx = subFlow(CollectSignat  uresFlow(partSignedTx, setOf(otherPartySession), GATHERING_SIGS.childProgressTracker()))
 
             // Stage 5.
             progressTracker.currentStep = FINALISING_TRANSACTION

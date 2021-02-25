@@ -1,14 +1,35 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html lang="en">
+
+<head >
     <meta charset="UTF-8">
-    <title>Example front-end.</title>
+
+    <title>Agreement front-end.</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+
+    <script src="app.js"></script>
 </head>
-<body>
+
+
+    <body ng-app="agreeAppModule", ng-controller="agreeAppController as agreeApp">
     <div>
-        <img src="https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png" alt="Corda" width="500">
-        <h1>CorDapp Template (Kotlin Version)</h1>
-        <p>Learn more about how to build CorDapps at <a href="http://www.github.com/corda/samples-kotlin">sample-kotlin</a></p>
+        <h1>Agreement Cordapp Web site</h1>
+        <nav class="navbar navbar-default">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <h2> this node : {{agreeApp.thisNode}}</h2>
+                    <h2> peers : {{peers}}</h2>
+                    <h2> agreements : {{agreements}} </h2>
+                </div>
+             </div>
+        </nav>
+
     </div>
-</body>
+    </body>
 </html>
