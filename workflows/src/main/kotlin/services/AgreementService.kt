@@ -44,37 +44,30 @@ class AgreementService(private val serviceHub: AppServiceHub) : SingletonSeriali
             val myAgreements2 = serviceHub.vaultService.queryBy<AgreementState>(AgreementState::class.java, criteria = generalCriteria2, paging = pageSpecification2).states
 
             // TODO: if already executing flow, don't start a new one until finished
-            myAgreements2.map {
-                /* reject criteria */
-
+            myAgreements2.map{
                 if(it.state.data.amount.quantity > 50) {
                     serviceHub.startFlow((RejectAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                     serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                 }
                 /* accept criteria */
-               else {if(it.state.data.amount.quantity < 30) {
-                   serviceHub.startFlow((AcceptAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-           //       serviceHub.startFlow((CreateIOU::Initiator)(it.state.data.amount.quantity.toLong() , it.state.data.issuer)).returnValue.get()
-                   serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-
-                   // createiou için acceptandCreate akışı olmalı
-               // serviceHub.startFlow((CreateIOU::Initiator)(it.state.data.amount.quantity.toLong() , it.state.data.issuer)).returnValue.get()
-                }
-                    else {
-                    /* other wise  expire criteria */
-                    if(it.state.data.validUntil < Date() ) {
-                        serviceHub.startFlow((ExpireAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                else {
+                    if(it.state.data.amount.quantity < 30) {
+                        serviceHub.startFlow((AcceptAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                         serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-                   }
-                    else {
-                        /* think about it*/
                     }
-                  }
+                    else {
+                        /* other wise  expire criteria */
+                        if(it.state.data.validUntil < Date() ) {
+                            serviceHub.startFlow((ExpireAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                            serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                        }
+                        else {
+                            /* think about it*/
+                        }
+                    }
                 }
-               }
-
-
             }
+        }
 
 
     loggerFor<AgreementService>().info("Builder  accept reject result2($results2).")
