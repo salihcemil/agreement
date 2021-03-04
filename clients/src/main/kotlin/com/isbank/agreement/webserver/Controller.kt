@@ -1,21 +1,24 @@
 package com.isbank.agreement.webserver
 
 import com.isbank.agreement.dataobjects.AgreementDO
+import com.isbank.agreement.dataobjects.IOUDO
+import com.isbank.agreement.flows.*
 import com.r3.corda.lib.accounts.contracts.states.AccountInfo
 import com.isbank.agreement.flows.AccountService.CreateNewAccount
 import com.isbank.agreement.flows.AccountService.FetchAllAccounts
-import com.isbank.agreement.flows.CreateAgreementFlow
-import com.isbank.agreement.flows.CreateIOU
-import com.isbank.agreement.flows.FetchAgreementsFlow
-import com.isbank.agreement.flows.FetchAllAgreementsFlow
+import com.isbank.agreement.states.AgreementState
 import com.isbank.agreement.states.IOUState
+import com.isbank.agreement.states.Status
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
+import net.corda.core.identity.Party
 import net.corda.core.messaging.startFlow
 import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
+import net.corda.core.node.services.Vault
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,6 +29,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.web.bind.annotation.*
 import java.util.*
+import javax.json.Json
+import javax.json.JsonString
 import javax.servlet.http.HttpServletRequest
 
 
@@ -228,10 +233,16 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Displays all Agreement states that only this node has been involved in.
      */
-    @GetMapping(value = ["agreementsAll"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping(value = ["agreementsConsumed"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMyAllAgreements(): ResponseEntity<List<AgreementDO>> {
-        val flowHandle = proxy.startFlow(FetchAllAgreementsFlow::Initiator)
-        val myAgreements = flowHandle.returnValue.get()
+        //val flowHandle = proxy.startFlow(FetchAllAgreementsFlow::Initiator)
+        //val myAgreements = flowHandle.returnValue.get()
+
+        val consumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.CONSUMED)
+        //return services.vaultQueryBy<ContractState>(consumedCriteria).states
+
+        val myAgreements = proxy.vaultQueryBy<AgreementState>(consumedCriteria).states
+                            .filter { a -> a.state.data.status == Status.ACCEPTED }
 
         val agreementDOs = myAgreements.map {
             AgreementDO(it.state.data.status.toString(),
@@ -243,6 +254,83 @@ class Controller(rpc: NodeRPCConnection) {
                 it.state.data.amount,
                 it.state.data.linearId)
         }
-        return ResponseEntity.ok(agreementDOs);
+        return ResponseEntity.ok(agreementDOs)
+    }
+
+    @PostMapping(value = ["convertAgreements"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    fun convertAgreement(): ResponseEntity<String> {
+        //return list
+        val returnList = mutableListOf<String>()
+
+        //getting agreements
+        val agreements = acceptedAgreements()
+
+        //create an iou state for each agreement
+        if(agreements.count()<1){
+            return ResponseEntity.badRequest().body("No accepted agreement found!.\n")
+        }
+        else{
+            return try {
+                agreements.map {
+                    val signedTx = proxy.startTrackedFlow(CreateIOUFromAgreement::Initiator,
+                            it.state.data.amount.quantity,
+                            it.state.data.issuer,
+                            it.state.data.timeAndDate,
+                            it.state.data.amount.token.currencyCode,
+                            it.state.data.linearId).returnValue.getOrThrow()
+
+                    returnList.add(signedTx.id.toString())
+                }
+                ResponseEntity.status(HttpStatus.CREATED).body(returnList.toString())
+            }
+            catch (ex: Throwable){
+                logger.error(ex.message, ex)
+                ResponseEntity.badRequest().body("ex.message!!")
+            }
+        }
+    }
+
+    @GetMapping(value = ["agreementsAccepted"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getAcceptedAgreements(): ResponseEntity<List<AgreementDO>> {
+        val acceptedAgreements = acceptedAgreements()
+
+        val agreementDOs = acceptedAgreements.map {
+            AgreementDO(it.state.data.status.toString(),
+                    it.state.data.issuer.name.toString(),
+                    it.state.data.acquirer.name.toString(),
+                    it.state.data.pan,
+                    it.state.data.timeAndDate,
+                    it.state.data.validUntil,
+                    it.state.data.amount,
+                    it.state.data.linearId)
+        }
+        return ResponseEntity.ok(agreementDOs)
+    }
+
+    @GetMapping(value = ["unconsumedIOUs"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getUnconsumedIOUs(): ResponseEntity<List<IOUDO>> {
+        val IOUs = unconsumedIOUs()
+
+        val iouDOs = IOUs.map {
+            IOUDO(it.state.data.acquirer.name.toString(),
+                    it.state.data.issuer.name.toString(),
+                    it.state.data.amount,
+                    it.state.data.agreementStateID,
+                    it.state.data.linearId)
+        }
+        return ResponseEntity.ok(iouDOs)
+    }
+
+    fun acceptedAgreements(): List<StateAndRef<AgreementState>>{
+        val consumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.CONSUMED)
+
+        return proxy.vaultQueryBy<AgreementState>(consumedCriteria).states
+                .filter { a -> a.state.data.status == Status.ACCEPTED }
+    }
+
+    fun unconsumedIOUs(): List<StateAndRef<IOUState>>{
+        val unconsumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
+
+        return  proxy.vaultQueryBy<IOUState>(unconsumedCriteria).states
     }
 }
