@@ -265,6 +265,9 @@ class Controller(rpc: NodeRPCConnection) {
         //getting agreements
         val agreements = acceptedAgreements()
 
+        //getting IOUs
+        val ious = unconsumedIOUs()
+
         //create an iou state for each agreement
         if(agreements.count()<1){
             return ResponseEntity.badRequest().body("No accepted agreement found!.\n")
@@ -272,14 +275,16 @@ class Controller(rpc: NodeRPCConnection) {
         else{
             return try {
                 agreements.map {
-                    val signedTx = proxy.startTrackedFlow(CreateIOUFromAgreement::Initiator,
-                            it.state.data.amount.quantity,
-                            it.state.data.issuer,
-                            it.state.data.timeAndDate,
-                            it.state.data.amount.token.currencyCode,
-                            it.state.data.linearId).returnValue.getOrThrow()
+                    if(!ious.any{i->i.state.data.agreementStateID == it.state.data.linearId.id}) {
+                        val signedTx = proxy.startTrackedFlow(CreateIOUFromAgreement::Initiator,
+                                it.state.data.amount.quantity,
+                                it.state.data.issuer,
+                                it.state.data.timeAndDate,
+                                it.state.data.amount.token.currencyCode,
+                                it.state.data.linearId).returnValue.getOrThrow()
 
-                    returnList.add(signedTx.id.toString())
+                        returnList.add(signedTx.id.toString())
+                    }
                 }
                 ResponseEntity.status(HttpStatus.CREATED).body(returnList.toString())
             }
