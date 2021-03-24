@@ -45,26 +45,20 @@ class AgreementService(private val serviceHub: AppServiceHub) : SingletonSeriali
 
             // TODO: if already executing flow, don't start a new one until finished
             myAgreements2.map{
-                if(it.state.data.amount.quantity > 50) {
+                //expire
+                if(it.state.data.validUntil < Date()) {
+                    serviceHub.startFlow((ExpireAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                    serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                }
+                //reject
+                else if(it.state.data.amount.quantity !in 0..50000000) {
                     serviceHub.startFlow((RejectAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                     serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                 }
-                /* accept criteria */
+                //accept
                 else {
-                    if(it.state.data.amount.quantity < 30) {
-                        serviceHub.startFlow((AcceptAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-                        serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-                    }
-                    else {
-                        /* other wise  expire criteria */
-                        if(it.state.data.validUntil < Date() ) {
-                            serviceHub.startFlow((ExpireAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-                            serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
-                        }
-                        else {
-                            /* think about it*/
-                        }
-                    }
+                    serviceHub.startFlow((AcceptAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
+                    serviceHub.startFlow((ConsumeAgreementFlow::Initiator)(it.state.data.linearId)).returnValue.get()
                 }
             }
         }

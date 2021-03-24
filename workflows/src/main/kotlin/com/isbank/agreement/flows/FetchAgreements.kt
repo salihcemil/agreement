@@ -14,7 +14,7 @@ import com.isbank.agreement.contracts.AgreementContract
 import com.isbank.agreement.states.Status
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
-import services.AgreementService
+//import services.AgreementService
 import java.util.*
 import java.util.concurrent.TimeUnit
 

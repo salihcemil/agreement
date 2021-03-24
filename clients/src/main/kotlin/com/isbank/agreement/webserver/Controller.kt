@@ -30,6 +30,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.web.bind.annotation.*
 import java.util.*
 import javax.json.Json
+import javax.json.JsonObject
 import javax.json.JsonString
 import javax.servlet.http.HttpServletRequest
 
@@ -160,10 +161,62 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Displays all IOU states that only this node has been involved in.
      */
-    @GetMapping(value = ["my-ious"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping(value = ["myious"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMyIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
         val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) }
         return ResponseEntity.ok(myious)
+    }
+
+    @GetMapping(value = ["iousbetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getIOUsBetween(request: HttpServletRequest): ResponseEntity<List<StateAndRef<IOUState>>> {
+        val otherSide = request.getParameter("issuer")
+        if(otherSide == null){
+            return ResponseEntity.badRequest().body(null)
+        }
+        val partyX500Name = CordaX500Name.parse(otherSide)
+        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
+
+        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
+                it.state.data.acquirer.equals(otherParty)}
+        return ResponseEntity.ok(myiousbetween)
+    }
+
+    @GetMapping(value = ["totalIOUBetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getTotalIOUBetween(request: HttpServletRequest): ResponseEntity<Long>{
+        val otherSide = request.getParameter("issuer") ?: return ResponseEntity.badRequest().body(null)
+        val partyX500Name = CordaX500Name.parse(otherSide)
+        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
+
+        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
+                it.state.data.acquirer.equals(otherParty)}
+
+        var totalAmount: Long = 0
+
+        myiousbetween.map{
+            if(it.state.data.issuer == otherParty)
+                totalAmount += it.state.data.amount.quantity
+            else
+                totalAmount -= it.state.data.amount.quantity
+        }
+
+        return ResponseEntity.ok(totalAmount)
+    }
+
+
+    @GetMapping(value = ["batchSettleIOUBetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun batchSettleIOUBetween(request: HttpServletRequest): ResponseEntity<String> {
+        val otherSide = request.getParameter("issuer") ?: return ResponseEntity.badRequest().body(null)
+        val partyX500Name = CordaX500Name.parse(otherSide)
+        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
+
+        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
+                it.state.data.acquirer.equals(otherParty)}
+
+        myiousbetween.map {
+            //call settle flow with id
+        }
+
+        return  ResponseEntity.ok("")
     }
 
     /**

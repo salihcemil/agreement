@@ -111,6 +111,7 @@ object AcceptAgreementFlow {
             val sessions = (otherSessions - ourIdentity).map { initiateFlow(it) }.toSet()
             val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, sessions, GATHERING_SIGS.childProgressTracker()))
 
+            //subFlow(CreateIOUFlow(outputAgreementState.amount, outputAgreementState.issuer))
             // Stage 5.
             progressTracker.currentStep = FINALISING_TRANSACTION
             // Notarise and record the transaction in both parties' vaults.
