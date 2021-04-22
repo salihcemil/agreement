@@ -19,7 +19,7 @@ class ContractTests {
     fun `transaction must include Create command`() {
         ledgerServices.ledger {
             transaction {
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState( IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 fails()
                 command(listOf(megaCorp.publicKey, miniCorp.publicKey), IOUContract.Commands.Create())
                 verifies()
@@ -31,8 +31,8 @@ class ContractTests {
     fun `transaction must have no inputs`() {
         ledgerServices.ledger {
             transaction {
-                input(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                input(IOUContract.ID, IOUState(IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState(IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 command(listOf(megaCorp.publicKey, miniCorp.publicKey), IOUContract.Commands.Create())
                 `fails with`("No inputs should be consumed when issuing an IOU.")
             }
@@ -43,8 +43,8 @@ class ContractTests {
     fun `transaction must have one output`() {
         ledgerServices.ledger {
             transaction {
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState( IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState( IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 command(listOf(megaCorp.publicKey, miniCorp.publicKey), IOUContract.Commands.Create())
                 `fails with`("Only one output state should be created.")
             }
@@ -55,7 +55,7 @@ class ContractTests {
     fun `lender must sign transaction`() {
         ledgerServices.ledger {
             transaction {
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState(IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 command(miniCorp.publicKey, IOUContract.Commands.Create())
                 `fails with`("All of the participants must be signers.")
             }
@@ -66,7 +66,7 @@ class ContractTests {
     fun `borrower must sign transaction`() {
         ledgerServices.ledger {
             transaction {
-                output(IOUContract.ID, IOUState( miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState(IOUState.Status.CREATED, miniCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 command(megaCorp.publicKey, IOUContract.Commands.Create())
                 `fails with`("All of the participants must be signers.")
             }
@@ -77,7 +77,7 @@ class ContractTests {
     fun `lender is not borrower`() {
         ledgerServices.ledger {
             transaction {
-                output(IOUContract.ID, IOUState( megaCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
+                output(IOUContract.ID, IOUState(IOUState.Status.CREATED, megaCorp.party, megaCorp.party, Date(), UUID.randomUUID(), Amount(0, Currency.getInstance("USD"))))
                 command(listOf(megaCorp.publicKey, miniCorp.publicKey), IOUContract.Commands.Create())
                 `fails with`("The issuer and the acquirer cannot be the same entity.")
             }

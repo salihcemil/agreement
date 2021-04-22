@@ -36,7 +36,7 @@ app.controller('agreeAppController', function($http, $location,$log,$scope) {
 
  //   $log.info(peers);
 
-   $http.get(apiBaseURL + "agreementsAll").then((response) => $scope.agreements = response.data);
+    $http.get(apiBaseURL + "agreementsAll").then((response) => $scope.agreements = response.data);
 
 
 

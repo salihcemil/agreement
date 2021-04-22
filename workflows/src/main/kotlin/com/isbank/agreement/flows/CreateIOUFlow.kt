@@ -65,7 +65,7 @@ class CreateIOUFlow constructor(val iouValue: Amount<Currency>,
         // Stage 1.
         progressTracker.currentStep = GENERATING_TRANSACTION
         // Generate an unsigned transaction.
-        val iouState = IOUState(serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), iouValue )
+        val iouState = IOUState(IOUState.Status.CREATED, serviceHub.myInfo.legalIdentities.first(), otherParty, Date(), UUID.randomUUID(), iouValue )
         val txCommand = Command(IOUContract.Commands.Create(), iouState.participants.map { it.owningKey })
         val txBuilder = TransactionBuilder(notary)
                 .addOutputState(iouState, IOUContract.ID)
@@ -103,7 +103,7 @@ class Acceptor(val otherPartySession: FlowSession) : FlowLogic<SignedTransaction
                 val output = stx.tx.outputs.single().data
                 "This must be an IOU transaction." using (output is IOUState)
                 val iou = output as IOUState
-                "I won't accept IOUs with a value over 100." using (iou.amount.quantity <= 100L)
+                "I won't accept IOUs with a value over 1000000.00." using (iou.amount.quantity <= 100000000L)
 
             }
 

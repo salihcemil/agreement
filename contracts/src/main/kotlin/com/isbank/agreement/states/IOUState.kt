@@ -8,6 +8,7 @@ import net.corda.core.identity.Party
 import net.corda.core.schemas.MappedSchema
 import net.corda.core.schemas.PersistentState
 import net.corda.core.schemas.QueryableState
+import net.corda.core.serialization.CordaSerializable
 import java.util.*
 
 /**
@@ -20,12 +21,13 @@ import java.util.*
  * @param acquirer the party receiving and approving the IOU.
  */
 @BelongsToContract(IOUContract::class)
-data class IOUState(val issuer: Party,
-                          val acquirer: Party,
-                          val dueDate: Date,
-                          val agreementStateID: UUID,
-                          val amount: Amount<Currency>,
-                          override val linearId: UniqueIdentifier = UniqueIdentifier()):
+data class IOUState(val status: Status,
+                    val issuer: Party,
+                    val acquirer: Party,
+                    val dueDate: Date,
+                    val agreementStateID: UUID,
+                    val amount: Amount<Currency>,
+                    override val linearId: UniqueIdentifier = UniqueIdentifier()):
         LinearState, QueryableState {
     /** The public keys of the involved parties. */
     override val participants: List<AbstractParty> get() = listOf(issuer, acquirer)
@@ -45,4 +47,19 @@ data class IOUState(val issuer: Party,
     }
 
     override fun supportedSchemas(): Iterable<MappedSchema> = listOf(IOUSchemaV1)
+
+    fun withNewStatus(consumed: Status): IOUState {
+        return IOUState(consumed,
+                this.issuer,
+                this.acquirer,
+                this.dueDate,
+                this.agreementStateID,
+                this.amount,
+                this.linearId)
+    }
+    @CordaSerializable
+    enum class Status
+    {
+        CREATED,CONSUMED;
+    }
 }

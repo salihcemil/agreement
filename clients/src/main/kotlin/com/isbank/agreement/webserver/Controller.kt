@@ -12,6 +12,7 @@ import com.isbank.agreement.states.Status
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.messaging.startFlow
@@ -42,7 +43,7 @@ val SERVICE_NAMES = listOf("Notary", "Network Map Service")
  * Access-Control-Allow-Origin: *
  */
 @RestController
-@RequestMapping("/") // The paths for HTTP requests are relative to this base path.
+@RequestMapping("/api/agreement") // The paths for HTTP requests are relative to this base path.
 class Controller(rpc: NodeRPCConnection) {
 
 
@@ -56,7 +57,6 @@ class Controller(rpc: NodeRPCConnection) {
         converter.objectMapper = mapper
         return converter
     }
-
 
     private val myLegalName = rpc.proxy.nodeInfo().legalIdentities.first().name
     private val proxy = rpc.proxy
@@ -124,6 +124,20 @@ class Controller(rpc: NodeRPCConnection) {
         return ResponseEntity.ok(proxy.vaultQueryBy<IOUState>().states)
     }
 
+    @GetMapping(value = ["agreements"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getAgreements(): ResponseEntity<List<StateAndRef<AgreementState>>> {
+        //val flowHandle = proxy.startFlow(FetchAllAgreementsFlow::Initiator)
+        //val myAgreements = flowHandle.returnValue.get()
+
+        val consumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.CONSUMED)
+        //return services.vaultQueryBy<ContractState>(consumedCriteria).states
+
+        val myAgreements = proxy.vaultQueryBy<AgreementState>(consumedCriteria).states
+                .filter { a -> a.state.data.status == Status.ACCEPTED }
+
+        return ResponseEntity.ok(myAgreements)
+    }
+
     /**
      * Initiates a flow to agree an IOU between two parties.
      *
@@ -135,7 +149,7 @@ class Controller(rpc: NodeRPCConnection) {
      *
      * The flow is invoked asynchronously. It returns a future when the flow's call() method returns.
      */
-    @PostMapping(value = ["create-iou"], produces = [MediaType.TEXT_PLAIN_VALUE], headers = ["Content-Type=application/x-www-form-urlencoded"])
+    @PutMapping(value = ["create-iou"], produces = [MediaType.TEXT_PLAIN_VALUE])
     fun createIOU(request: HttpServletRequest): ResponseEntity<String> {
         val iouValue = request.getParameter("iouValue").toLong()
         val partyName = request.getParameter("partyName")
@@ -158,82 +172,10 @@ class Controller(rpc: NodeRPCConnection) {
         }
     }
 
-    /**
-     * Displays all IOU states that only this node has been involved in.
-     */
-    @GetMapping(value = ["myious"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getMyIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
-        val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) }
-        return ResponseEntity.ok(myious)
-    }
-
-    @GetMapping(value = ["iousbetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getIOUsBetween(request: HttpServletRequest): ResponseEntity<List<StateAndRef<IOUState>>> {
-        val otherSide = request.getParameter("issuer")
-        if(otherSide == null){
-            return ResponseEntity.badRequest().body(null)
-        }
-        val partyX500Name = CordaX500Name.parse(otherSide)
-        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
-
-        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
-                it.state.data.acquirer.equals(otherParty)}
-        return ResponseEntity.ok(myiousbetween)
-    }
-
-    @GetMapping(value = ["totalIOUBetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTotalIOUBetween(request: HttpServletRequest): ResponseEntity<Long>{
-        val otherSide = request.getParameter("issuer") ?: return ResponseEntity.badRequest().body(null)
-        val partyX500Name = CordaX500Name.parse(otherSide)
-        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
-
-        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
-                it.state.data.acquirer.equals(otherParty)}
-
-        var totalAmount: Long = 0
-
-        myiousbetween.map{
-            if(it.state.data.issuer == otherParty)
-                totalAmount += it.state.data.amount.quantity
-            else
-                totalAmount -= it.state.data.amount.quantity
-        }
-
-        return ResponseEntity.ok(totalAmount)
-    }
-
-
-    @GetMapping(value = ["batchSettleIOUBetween"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun batchSettleIOUBetween(request: HttpServletRequest): ResponseEntity<String> {
-        val otherSide = request.getParameter("issuer") ?: return ResponseEntity.badRequest().body(null)
-        val partyX500Name = CordaX500Name.parse(otherSide)
-        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body(null)
-
-        val myiousbetween = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) &&
-                it.state.data.acquirer.equals(otherParty)}
-
-        myiousbetween.map {
-            //call settle flow with id
-        }
-
-        return  ResponseEntity.ok("")
-    }
-
-    /**
-     * Initiates a flow to agree an Agreement between two parties.
-     *
-     * Once the flow finishes it will have written the Agreement to ledger. Both the issuer and the acquirer will be able to
-     * see it when calling /spring/api/agreements on their respective nodes.
-     *
-     * This end-point takes a Party name parameter as part of the path. If the serving node can't find the other party
-     * in its network map cache, it will return an HTTP bad request.
-     *
-     * The flow is invoked asynchronously. It returns a future when the flow's call() method returns.
-     */
-    @PostMapping(value = ["agreements/create"], produces = [MediaType.TEXT_PLAIN_VALUE], headers = ["Content-Type=application/x-www-form-urlencoded"])
+    @PutMapping(value = ["create-agreement"], produces = [MediaType.TEXT_PLAIN_VALUE])
     fun createAgreement(request: HttpServletRequest): ResponseEntity<String> {
-        val amountQuantity = request.getParameter("amountQuantity").toLong()
-        val amountCurrencyCode = request.getParameter("amountCurrencyCode")
+        val amountQuantity = request.getParameter("quantity").toLong()
+        val amountCurrencyCode = request.getParameter("currencyCode")
         if (amountQuantity <= 0 ) {
             return ResponseEntity.badRequest().body("Query parameter 'amountQuantity' must be non-negative.\n")
         }
@@ -241,7 +183,7 @@ class Controller(rpc: NodeRPCConnection) {
             return ResponseEntity.badRequest().body("Query parameter 'amountCurrencyCode' must not be empty.\n")
         }
         val amount = Amount<Currency>(amountQuantity, Currency.getInstance(amountCurrencyCode))
-        val pan = request.getParameter("pan")
+        val pan = "4543 5678 6543 4567" //request.getParameter("pan")
         val issuer = request.getParameter("issuer")
         if(issuer == null){
             return ResponseEntity.badRequest().body("Query parameter 'issuer' must not be null.\n")
@@ -252,65 +194,17 @@ class Controller(rpc: NodeRPCConnection) {
         val partyX500Name = CordaX500Name.parse(issuer)
         val issuerParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest().body("Party named $issuer cannot be found.\n")
 
+
         return try {
             val signedTx = proxy.startTrackedFlow(CreateAgreementFlow::Initiator, issuerParty, pan, amount).returnValue.getOrThrow()
             ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
-
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
-            ResponseEntity.badRequest().body(ex.message!!)
+            return ResponseEntity.badRequest().body(ex.message!!)
         }
     }
 
-    /**
-     * Displays all Agreement states that only this node has been involved in.
-     */
-    @GetMapping(value = ["agreements"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getMyAgreements(): ResponseEntity<List<AgreementDO>> {
-        val flowHandle = proxy.startFlow(FetchAgreementsFlow::Initiator)
-        val myAgreements = flowHandle.returnValue.get()
-
-        val agreementDOs = myAgreements.map {
-            AgreementDO(it.state.data.status.toString(),
-                    it.state.data.issuer.name.toString(),
-                    it.state.data.acquirer.name.toString(),
-                    it.state.data.pan,
-                    it.state.data.timeAndDate,
-                    it.state.data.validUntil,
-                    it.state.data.amount,
-                    it.state.data.linearId)
-        }
-        return ResponseEntity.ok(agreementDOs)
-    }
-
-    /**
-     * Displays all Agreement states that only this node has been involved in.
-     */
-    @GetMapping(value = ["agreementsConsumed"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getMyAllAgreements(): ResponseEntity<List<AgreementDO>> {
-        //val flowHandle = proxy.startFlow(FetchAllAgreementsFlow::Initiator)
-        //val myAgreements = flowHandle.returnValue.get()
-
-        val consumedCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.CONSUMED)
-        //return services.vaultQueryBy<ContractState>(consumedCriteria).states
-
-        val myAgreements = proxy.vaultQueryBy<AgreementState>(consumedCriteria).states
-                            .filter { a -> a.state.data.status == Status.ACCEPTED }
-
-        val agreementDOs = myAgreements.map {
-            AgreementDO(it.state.data.status.toString(),
-                it.state.data.issuer.name.toString(),
-                it.state.data.acquirer.name.toString(),
-                it.state.data.pan,
-                it.state.data.timeAndDate,
-                it.state.data.validUntil,
-                it.state.data.amount,
-                it.state.data.linearId)
-        }
-        return ResponseEntity.ok(agreementDOs)
-    }
-
-    @PostMapping(value = ["convertAgreements"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    @PutMapping(value = ["convertAgreements"], produces = [MediaType.TEXT_PLAIN_VALUE])
     fun convertAgreement(): ResponseEntity<String> {
         //return list
         val returnList = mutableListOf<String>()
@@ -326,27 +220,60 @@ class Controller(rpc: NodeRPCConnection) {
             return ResponseEntity.badRequest().body("No accepted agreement found!.\n")
         }
         else{
-            return try {
-                agreements.map {
-                    if(!ious.any{i->i.state.data.agreementStateID == it.state.data.linearId.id}) {
-                        val signedTx = proxy.startTrackedFlow(CreateIOUFromAgreement::Initiator,
-                                it.state.data.amount.quantity,
-                                it.state.data.issuer,
-                                it.state.data.timeAndDate,
-                                it.state.data.amount.token.currencyCode,
-                                it.state.data.linearId).returnValue.getOrThrow()
+            agreements.map {
+                if(!ious.any{i->i.state.data.agreementStateID == it.state.data.linearId.id}) {
+                    val signedTx = proxy.startTrackedFlow(CreateIOUFromAgreement::Initiator,
+                            it.state.data.amount.quantity,
+                            it.state.data.issuer,
+                            it.state.data.timeAndDate,
+                            it.state.data.amount.token.currencyCode,
+                            it.state.data.linearId).returnValue.getOrThrow()
 
-                        returnList.add(signedTx.id.toString())
-                    }
+                    returnList.add(signedTx.id.toString())
                 }
+            }
+
+            return try {
                 ResponseEntity.status(HttpStatus.CREATED).body(returnList.toString())
             }
             catch (ex: Throwable){
                 logger.error(ex.message, ex)
-                ResponseEntity.badRequest().body("ex.message!!")
+                ResponseEntity.badRequest().body(ex.message)
             }
         }
     }
+
+    /**
+     * Displays all IOU states that only this node has been involved in.
+     */
+    @GetMapping(value = ["myious"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getMyIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
+        val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.issuer.equals(proxy.nodeInfo().legalIdentities.first()) }
+        return ResponseEntity.ok(myious)
+    }
+
+    @GetMapping(value = ["consumedious"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getConsumedIOUs(): ResponseEntity<List<StateAndRef<IOUState>>> {
+        val myious = proxy.vaultQueryBy<IOUState>().states.filter { it.state.data.status.equals(IOUState.Status.CONSUMED) }
+        return ResponseEntity.ok(myious)
+    }
+
+
+    @PutMapping(value = ["consumeIOU"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun consumeIOU(request: HttpServletRequest): ResponseEntity<String> {
+        val IOUStateId = request.getParameter("id") ?: return ResponseEntity.badRequest().body(null)
+
+        val linearId = UniqueIdentifier.fromString(IOUStateId)
+        return try {
+            val signedTx = proxy.startTrackedFlow(ConsumeIOUFlow::Initiator, linearId).returnValue.getOrThrow()
+            ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
+
+        } catch (ex: Throwable) {
+            logger.error(ex.message, ex)
+            ResponseEntity.badRequest().body(ex.message!!)
+        }
+    }
+
 
     @GetMapping(value = ["agreementsAccepted"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getAcceptedAgreements(): ResponseEntity<List<AgreementDO>> {
@@ -391,4 +318,5 @@ class Controller(rpc: NodeRPCConnection) {
 
         return  proxy.vaultQueryBy<IOUState>(unconsumedCriteria).states
     }
+
 }
