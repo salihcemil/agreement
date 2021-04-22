@@ -1,35 +1,271 @@
+<!--
+--------
+WARNING:
+--------
+FOR SECURITY REASONS, USING A JAVASCRIPT WEB APP HOSTED VIA THE CORDA NODE IS NOT THE RECOMMENDED WAY TO INTERFACE
+WITH CORDA NODES! HOWEVER, FOR THIS PRE-ALPHA RELEASE IT'S A USEFUL WAY TO EXPERIMENT WITH THE PLATFORM AS IT ALLOWS
+YOU TO QUICKLY BUILD A UI FOR DEMONSTRATION PURPOSES.
+
+GOING FORWARD WE RECOMMEND IMPLEMENTING A STANDALONE WEB SERVER THAT AUTHORISES VIA THE NODE'S RPC INTERFACE. IN THE
+COMING WEEKS, WE'LL WRITE A TUTORIAL ON HOW BEST TO DO THIS.
+-->
+
+<!-- Define your frontend here. -->
+
 <!DOCTYPE html>
 <html lang="en">
-
-<head >
+<head>
     <meta charset="UTF-8">
-
-    <title>Agreement front-end.</title>
-
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
-    <!-- JavaScript Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
-
-    <script src="app.js"></script>
+    <title>Example CorDapp</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="css/index.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.0-rc.1/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.2.0/ui-bootstrap-tpls.min.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/createIOUModal.js"></script>
+    <script src="js/createAgreementModal.js"></script>
+    <script src="js/convertModal.js"></script>
+    <script src="js/issueCashModal.js"></script>
+    <script src="js/transferModal.js"></script>
+    <script src="js/settleModal.js"></script>
 </head>
 
-
-    <body ng-app="agreeAppModule", ng-controller="agreeAppController as agreeApp">
-    <div>
-        <h1>Agreement Cordapp Web site</h1>
-        <nav class="navbar navbar-default">
-            <div class="container-fluid">
-                <div class="navbar-header">
-                    <h2> this node : {{agreeApp.thisNode}}</h2>
-                    <h2> peers : {{peers}}</h2>
-                    <h2> agreements : {{agreements}} </h2>
-                </div>
-             </div>
-        </nav>
-
+<body ng-app="demoAppModule" ng-controller="DemoAppCtrl as demoApp">
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">{{demoApp.thisNode}}</a>
+        </div>
+        <button ng-click="demoApp.openCreateAgreementModal()" type="button" class="btn btn-primary navbar-btn">Create Agreement</button>
+        <!--<button ng-click="demoApp.openCreateIOUModal()" type="button" class="btn btn-primary navbar-btn">Create IOU</button>
+        <button ng-click="demoApp.openIssueCashModal()" type="button" class="btn btn-primary navbar-btn">Issue cash</button>-->
+        <button ng-click="demoApp.openConvertModal()" type="button" class="btn btn-primary navbar-btn">Convert Agreements</button>
+        <button ng-click="demoApp.refresh()" type="button" class="btn btn-default navbar-btn"><span
+                class="glyphicon glyphicon-refresh"></span></button>
     </div>
-    </body>
+</nav>
+
+<script type="text/ng-template" id="createIOUModal.html">
+    <div class="modal-header">
+        <h4 class="modal-title">Add new IOU</h4>
+    </div>
+    <form>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="createIOUCounterparty" class="control-label">Counter-party:</label>
+                <select ng-model="createIOUModal.form.counterparty" class="form-control" id="createIOUCounterparty"
+                        ng-options="peer as peer for peer in createIOUModal.peers">
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="createIOUCurrency" class="control-label">Currency (ISO code):</label>
+                <input type="text" ng-model="createIOUModal.form.currency" class="form-control" id="createIOUCurrency">
+            </div>
+            <div class="form-group">
+                <label for="createIOUAmount" class="control-label">Amount (Int):</label>
+                <input type="text" ng-model="createIOUModal.form.amount" class="form-control" id="createIOUAmount">
+            </div>
+            <div ng-show="createIOUModal.formError" class="form-group">
+                <div class="alert alert-danger" role="alert">
+                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                    <span class="sr-only">Error:</span>
+                    Enter valid IOU creation parameters
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button ng-click="createIOUModal.cancel()" type="button" class="btn btn-default">Close</button>
+            <button ng-click="createIOUModal.create()" type="button" class="btn btn-primary">Create IOU</button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="createIOUMsgModal.html">
+    <div class="modal-body" id="create-iou-modal-body">
+        {{ createIOUMsgModal.message }}
+    </div>
+</script>
+
+<script type="text/ng-template" id="createAgreementModal.html">
+    <div class="modal-header">
+        <h4 class="modal-title">Add new Agreement</h4>
+    </div>
+    <form>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="createAgreementCounterparty" class="control-label">Counter-party:</label>
+                <select ng-model="createAgreementModal.form.counterparty" class="form-control" id="createAgreementCounterparty"
+                        ng-options="peer as peer for peer in createAgreementModal.peers">
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="createAgreementCurrency" class="control-label">Currency (ISO code):</label>
+                <input type="text" ng-model="createAgreementModal.form.currency" class="form-control" id="createAgreementCurrency">
+            </div>
+            <div class="form-group">
+                <label for="createAgreementAmount" class="control-label">Amount (Int):</label>
+                <input type="text" ng-model="createAgreementModal.form.amount" class="form-control" id="createAgreementAmount">
+            </div>
+            <div ng-show="createAgreementModal.formError" class="form-group">
+                <div class="alert alert-danger" role="alert">
+                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                    <span class="sr-only">Error:</span>
+                    Enter valid Agreement creation parameters
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button ng-click="createAgreementModal.cancel()" type="button" class="btn btn-default">Close</button>
+            <button ng-click="createAgreementModal.create()" type="button" class="btn btn-primary">Create Agreement</button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="createAgreementMsgModal.html">
+    <div class="modal-body" id="create-agreement-modal-body">
+        {{ createAgreementMsgModal.message }}
+    </div>
+</script>
+
+<script type="text/ng-template" id="convertModal.html">
+    <div class="modal-header">
+        <h4 class="modal-title">Are you sure to convert all agreements?</h4>
+    </div>
+    <form>
+        <div class="modal-footer">
+            <button ng-click="convertModal.cancel()" type="button" class="btn btn-default">Close</button>
+            <button ng-click="convertModal.convert()" type="button" class="btn btn-primary">Convert</button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="convertMsgModal.html">
+    <div class="modal-body" id="convert-modal-body">
+        {{ convertMsgModal.message }}
+    </div>
+</script>
+
+
+<script type="text/ng-template" id="settleModal.html">
+    <div class="modal-header">
+        <h4 class="modal-title">Settle IOU</h4>
+    </div>
+    <form>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Are you sure to settle the IOU?</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button ng-click="settleModal.cancel()" type="button" class="btn btn-default">Close</button>
+            <button ng-click="settleModal.settle()" type="button" class="btn btn-primary">Settle</button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="settleMsgModal.html">
+    <div class="modal-body" id="settle-modal-body">
+        {{ settleMsgModal.message }}
+    </div>
+</script>
+
+<div class="row">
+    <div class="col-md-1"></div>
+    <div class="col-md-10">
+        <div ng-show="!demoApp.agreements.length" class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">There are no recorded agreements</h3>
+            </div>
+            <div class="panel-body">Use the "Create Agreement" button to set an agreement with a peer.</div>
+        </div>
+        <div ng-show="demoApp.agreements.length" class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">Recorded Agreements:</h3>
+            </div>
+            <div class="panel-body">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Issuer</th>
+                        <th>Acquirer</th>
+                        <th>Amount</th>
+                        <th>ValidUntil</th>
+<!--                        <th>Action</th>-->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="agreement in demoApp.agreements">
+                        <td class="vert-align">{{agreement.issuer}}</td>
+                        <td class="vert-align">{{agreement.acquirer}}</td>
+                        <td class="vert-align">{{agreement.amount}}</td>
+                        <td class="vert-align">{{agreement.validUntil}}</td>
+                        <!--<td>
+                            <div class="btn-group" role="group">
+                                <button ng-click="demoApp.convertModal(iou.linearId.id)" type="button" class="btn btn-primary">Convert
+                                </button>
+                            </div>
+                        </td>-->
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-1"></div>
+    <div class="col-md-10">
+        <div ng-show="!demoApp.ious.length" class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">There are no recorded IOUs</h3>
+            </div>
+            <div class="panel-body">Use the "Create IOU" button to send an IOU to a peer.</div>
+        </div>
+        <div ng-show="demoApp.ious.length" class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">Recorded IOUs:</h3>
+            </div>
+            <div class="panel-body">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Issuer</th>
+                        <th>Acquirer</th>
+                        <th>Amount</th>
+                        <th>dueDate</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="iou in demoApp.ious">
+                        <td class="vert-align">{{iou.issuer}}</td>
+                        <td class="vert-align">{{iou.acquirer}}</td>
+                        <td class="vert-align">{{iou.amount}}</td>
+                        <td class="vert-align">{{iou.dueDate}}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <!--<button ng-click="demoApp.openTransferModal(iou.linearId.id)" type="button" class="btn btn-primary">Transfer
+                                </button>-->
+                                <button ng-click="demoApp.openSettleModal(iou.linearId.id)" type="button" class="btn btn-primary">Settle
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+</div>
+
+</body>
 </html>
